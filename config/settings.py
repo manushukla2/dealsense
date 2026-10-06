@@ -3,29 +3,23 @@ from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# Project root = the folder that contains "config/", "src/", ".env" etc.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 class Settings(BaseSettings):
-    """All project settings, loaded from environment variables / the .env file."""
-
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
-    # --- Speech-to-text (Groq-hosted Whisper) ---
+    # --- Speech-to-text + LLM (both via Groq) ---
     groq_api_key: str = ""
     whisper_model: str = "whisper-large-v3"
+    groq_llm_model: str = "openai/gpt-oss-120b"
 
     # --- Speaker labelling (pyannote via Hugging Face) ---
     hf_token: str = ""
-
-    # --- Reasoning layer (LLM) ---
-    anthropic_api_key: str = ""
-    llm_model: str = ""
 
     # --- Audio handling ---
     max_chunk_mb: int = 20
@@ -38,7 +32,6 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
 
-    # ---------- Folder locations ----------
     @property
     def data_dir(self) -> Path:
         return BASE_DIR / "data"
@@ -63,9 +56,7 @@ class Settings(BaseSettings):
     def models_dir(self) -> Path:
         return BASE_DIR / "models"
 
-    # ---------- Helpers ----------
     def ensure_dirs(self) -> None:
-        """Create the data and model folders if they do not exist yet."""
         for folder in (
             self.raw_dir,
             self.processed_dir,
@@ -76,12 +67,9 @@ class Settings(BaseSettings):
             folder.mkdir(parents=True, exist_ok=True)
 
     def missing_keys(self) -> list[str]:
-        """Return the names of required API keys that are still empty."""
-        required = {
+        return [name for name, value in {
             "GROQ_API_KEY": self.groq_api_key,
-            "ANTHROPIC_API_KEY": self.anthropic_api_key,
-        }
-        return [name for name, value in required.items() if not value]
+        }.items() if not value]
 
     @property
     def max_chunk_bytes(self) -> int:
@@ -90,7 +78,6 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Build the Settings object once and reuse it everywhere."""
     return Settings()
 
 
