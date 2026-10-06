@@ -1,0 +1,12 @@
+﻿data/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.wav
+*.mp3
+*.zip
+.env
+.git/
+notebooks/
+models/
