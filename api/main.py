@@ -1,9 +1,19 @@
-﻿from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from api.routes import router
-from api.db import init_db
+﻿from contextlib import asynccontextmanager
 
-app = FastAPI(title="DealSense API", version="1.0.0")
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.db import init_db
+from api.routes import router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title="DealSense API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -12,12 +22,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.on_event("startup")
-def startup():
-    init_db()
+app.include_router(router, prefix="/api")
+
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-app.include_router(router, prefix="/api")
