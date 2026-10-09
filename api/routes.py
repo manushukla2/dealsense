@@ -1,76 +1,74 @@
 ﻿import uuid
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy.orm import Session
-from api.db import get_db, MeetingRecord
-from src.audio.preprocess import preprocess
-from src.audio.transcribe import transcribe
-from src.audio.diarize import diarize
-from src.audio.merge import merge
-from src.nlp.segmenter import segment_transcript
-from src.nlp.sentiment_intent import analyse
-from src.nlp.signals import detect_signals
-from src.scoring.features import extract_features
-from src.scoring.scorer import DealScorer
-from src.scoring.calibrate import Calibrator
-from src.reasoning.explain import explain_meeting
-from src.schemas import MeetingResult
-import tempfile, os
+
+from api.db import MeetingRecord, get_db
+from config.settings import settings
+from src.pipeline import run
 
 router = APIRouter()
-scorer = DealScorer()
-calibrator = Calibrator.load()
+
+
+def _save(path: Path, data: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(data)
+
+
+def _record_from(meeting_id: str, filename: str, result) -> MeetingRecord:
+    p = result.prediction
+    exp = None
+    moments = []
+    return MeetingRecord(
+        meeting_id=meeting_id,
+        source_file=filename,
+        probability=p.probability if p else None,
+        verdict=p.verdict if p else None,
+        summary=p.summary if p else None,
+        transcript=result.transcript.model_dump(),
+        prediction={
+            "probability": p.probability if p else None,
+            "verdict": p.verdict if p else None,
+            "summary": p.summary if p else None,
+            "positives": p.positives if p else [],
+            "risks": p.risks if p else [],
+            "next_step": "",
+            "source": "pipeline",
+            "warnings": [],
+        } if p else {},
+    )
+
 
 @router.post("/upload")
-async def upload_meeting(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    if not file.filename.endswith((".wav", ".mp3", ".m4a", ".mp4")):
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+async def upload_meeting(
+    file: UploadFile,
+    num_speakers: int = 2,
+    use_llm: bool = True,
+    db: Session = Depends(get_db),
+):
+    ext = Path(file.filename).suffix.lower()
+    if ext not in {".wav", ".mp3", ".m4a", ".flac", ".mp4", ".webm", ".mov"}:
+        raise HTTPException(status_code=400, detail=f"Unsupported file type: {ext}")
 
     meeting_id = str(uuid.uuid4())
-
-    with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(file.filename)[1]) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    audio_path = settings.raw_dir / f"{meeting_id}{ext}"
 
     try:
-        audio = preprocess(tmp_path)
-        segments = transcribe(audio)
-        diarization = diarize(audio)
-        transcript = merge(segments, diarization)
-        exchanges = segment_transcript(transcript)
-        analyses = [analyse(ex) for ex in exchanges]
-        analyses = [detect_signals(ex, an) for ex, an in zip(exchanges, analyses)]
-        features = extract_features(analyses)
-        score = scorer.predict(features)
-        percent = calibrator.transform(score.probability) * 100
-        explanation = explain_meeting(exchanges, analyses, score, percent, calibrator.describe())
-
-        record = MeetingRecord(
+        _save(audio_path, await file.read())
+        result = run(
+            audio_path,
             meeting_id=meeting_id,
-            source_file=file.filename,
-            probability=score.probability,
-            verdict=explanation.verdict,
-            summary=explanation.summary,
-            transcript=transcript.model_dump(),
-            prediction={
-                "probability": score.probability,
-                "percent": percent,
-                "verdict": explanation.verdict,
-                "summary": explanation.summary,
-                "positives": explanation.positives,
-                "risks": explanation.risks,
-                "moments": [m.__dict__ for m in explanation.moments],
-                "next_step": explanation.next_step,
-                "source": explanation.source,
-                "warnings": explanation.warnings,
-            }
+            num_speakers=num_speakers,
+            use_llm=use_llm,
         )
+        record = _record_from(meeting_id, file.filename, result)
         db.add(record)
         db.commit()
-
         return {"meeting_id": meeting_id, "result": record.prediction}
-
-    finally:
-        os.unlink(tmp_path)
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 @router.get("/meetings/{meeting_id}")
@@ -82,6 +80,28 @@ def get_meeting(meeting_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/meetings")
-def list_meetings(db: Session = Depends(get_db)):
-    records = db.query(MeetingRecord).order_by(MeetingRecord.created_at.desc()).limit(20).all()
-    return [{"meeting_id": r.meeting_id, "source_file": r.source_file, "verdict": r.verdict, "probability": r.probability} for r in records]
+def list_meetings(skip: int = 0, limit: int = 20, db: Session = Depends(get_db)):
+    records = (
+        db.query(MeetingRecord)
+        .order_by(MeetingRecord.created_at.desc())
+        .offset(skip).limit(limit).all()
+    )
+    return [
+        {
+            "meeting_id": r.meeting_id,
+            "source_file": r.source_file,
+            "verdict": r.verdict,
+            "probability": r.probability,
+        }
+        for r in records
+    ]
+
+
+@router.delete("/meetings/{meeting_id}")
+def delete_meeting(meeting_id: str, db: Session = Depends(get_db)):
+    record = db.query(MeetingRecord).filter(MeetingRecord.meeting_id == meeting_id).first()
+    if not record:
+        raise HTTPException(status_code=404, detail="Meeting not found")
+    db.delete(record)
+    db.commit()
+    return {"deleted": meeting_id}
