@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import Uploader from "./components/Uploader";
 import VoiceRecorder from "./components/VoiceRecorder";
+import TextInput from "./components/TextInput";
 import Result from "./components/Result";
 
 export default function App() {
@@ -8,6 +9,8 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [tab, setTab] = useState("upload");
+
+  const switchTab = (t) => { setTab(t); setResult(null); setError(null); };
 
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white">
@@ -35,22 +38,28 @@ export default function App() {
           Predict Deal Outcomes<br />from Any Meeting
         </h1>
         <p className="text-gray-400 max-w-xl mx-auto text-base mb-10">
-          Upload a recording or record live. DealSense transcribes it, analyses every exchange, and gives you a probability score with full reasoning.
+          Upload a recording, record live, or paste a transcript. DealSense analyses every exchange and gives you a probability score with full reasoning.
         </p>
 
         {/* Tabs */}
         <div className="inline-flex bg-white/5 border border-white/10 rounded-xl p-1 mb-8">
           <button
-            onClick={() => { setTab("upload"); setResult(null); setError(null); }}
+            onClick={() => switchTab("upload")}
             className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${tab === "upload" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
           >
             📁 Upload File
           </button>
           <button
-            onClick={() => { setTab("record"); setResult(null); setError(null); }}
+            onClick={() => switchTab("record")}
             className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${tab === "record" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
           >
             🎙 Record Live
+          </button>
+          <button
+            onClick={() => switchTab("text")}
+            className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${tab === "text" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            📋 Paste Transcript
           </button>
         </div>
 
@@ -69,6 +78,10 @@ export default function App() {
 
         {tab === "record" && (
           <VoiceRecorder setResult={setResult} setError={setError} />
+        )}
+
+        {tab === "text" && (
+          <TextInput setResult={setResult} setError={setError} />
         )}
 
         {error && (
