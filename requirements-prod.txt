@@ -11,6 +11,8 @@ transformers>=4.40
 accelerate>=0.30
 scikit-learn>=1.4
 
+noisereduce>=3.0.0
+
 # API
 fastapi>=0.110
 uvicorn[standard]>=0.29
@@ -18,3 +20,4 @@ python-multipart>=0.0.9
 pydantic>=2.6
 pydantic-settings>=2.2
 python-dotenv>=1.0
+
