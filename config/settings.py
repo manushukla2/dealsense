@@ -10,25 +10,17 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8",
+        env_file_override=False,
         extra="ignore",
     )
 
-    # --- Speech-to-text + LLM (both via Groq) ---
     groq_api_key: str = ""
     whisper_model: str = "whisper-large-v3"
     groq_llm_model: str = "openai/gpt-oss-120b"
-
-    # --- Speaker labelling (pyannote via Hugging Face) ---
     hf_token: str = ""
-
-    # --- Audio handling ---
     max_chunk_mb: int = 20
     target_sample_rate: int = 16000
-
-    # --- Database ---
     database_url: str = "postgresql://user:password@localhost:5432/dealsense"
-
-    # --- App ---
     app_env: str = "development"
     log_level: str = "INFO"
 
