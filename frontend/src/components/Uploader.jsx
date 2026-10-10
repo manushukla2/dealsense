@@ -1,6 +1,7 @@
 ﻿import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import axios from "axios";
+import API_URL from "../api.js";
 
 export default function Uploader({ setResult, setLoading, setError }) {
   const [fileName, setFileName] = useState(null);
@@ -8,24 +9,19 @@ export default function Uploader({ setResult, setLoading, setError }) {
   const onDrop = useCallback(async (acceptedFiles) => {
     const file = acceptedFiles[0];
     if (!file) return;
-
     setFileName(file.name);
     setResult(null);
     setError(null);
     setLoading(true);
-
     const formData = new FormData();
     formData.append("file", file);
-
     try {
-      const res = await axios.post("http://localhost:8000/predict", formData, {
+      const res = await axios.post(`${API_URL}/predict`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setResult(res.data);
     } catch (err) {
-      setError(
-        err.response?.data?.detail || "Something went wrong. Is the backend running?"
-      );
+      setError(err.response?.data?.detail || "Something went wrong. Is the backend running?");
     } finally {
       setLoading(false);
     }
@@ -41,10 +37,7 @@ export default function Uploader({ setResult, setLoading, setError }) {
     <div
       {...getRootProps()}
       className={`mx-auto w-full max-w-lg rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-300
-        ${isDragActive
-          ? "border-blue-500 bg-blue-500/10 scale-105"
-          : "border-white/10 hover:border-blue-500/50 hover:bg-white/5 bg-white/[0.03]"
-        }`}
+        ${isDragActive ? "border-blue-500 bg-blue-500/10 scale-105" : "border-white/10 hover:border-blue-500/50 hover:bg-white/5 bg-white/[0.03]"}`}
     >
       <input {...getInputProps()} />
       <div className="flex flex-col items-center gap-3">

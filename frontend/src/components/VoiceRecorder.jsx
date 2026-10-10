@@ -1,5 +1,6 @@
 ﻿import { useState, useRef } from "react";
 import axios from "axios";
+import API_URL from "../api.js";
 
 const PIPELINE_STAGES = [
   { id: 1, label: "Audio Ingestion",       icon: "🎙", desc: "Receiving and preparing audio" },
@@ -34,7 +35,7 @@ export default function VoiceRecorder({ setResult, setError }) {
     try {
       const fd = new FormData();
       fd.append("file", blob, "recording.webm");
-      const res = await axios.post("http://localhost:8000/transcribe", fd, {
+      const res = await axios.post(`${API_URL}/transcribe`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setTranscript(res.data.text);
@@ -55,7 +56,7 @@ export default function VoiceRecorder({ setResult, setError }) {
       const blob = new Blob(chunksRef.current, { type: "audio/webm" });
       setAudioBlob(blob);
       setAudioUrl(URL.createObjectURL(blob));
-      transcribeBlob(blob); // auto-transcribe
+      transcribeBlob(blob);
     };
     mr.start();
     setRecording(true);
@@ -77,9 +78,8 @@ export default function VoiceRecorder({ setResult, setError }) {
     clearInterval(timerRef.current);
   };
 
-  const runPipeline = async (blob) => {
-    const b = blob || audioBlob;
-    if (!b) return;
+  const runPipeline = async () => {
+    if (!audioBlob) return;
     setResult(null);
     setError(null);
     setAnalyzing(true);
@@ -89,20 +89,19 @@ export default function VoiceRecorder({ setResult, setError }) {
     let current = 1;
     const advance = () => {
       if (current >= PIPELINE_STAGES.length) return;
-      const delay = STAGE_DELAYS[current - 1];
       setTimeout(() => {
         setCompletedStages((prev) => [...prev, current]);
         current++;
         setActiveStage(current);
         advance();
-      }, delay);
+      }, STAGE_DELAYS[current - 1]);
     };
     advance();
 
     try {
       const fd = new FormData();
-      fd.append("file", b, "recording.webm");
-      const res = await axios.post("http://localhost:8000/predict", fd, {
+      fd.append("file", audioBlob, "recording.webm");
+      const res = await axios.post(`${API_URL}/predict`, fd, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setCompletedStages(PIPELINE_STAGES.map((s) => s.id));
@@ -119,15 +118,10 @@ export default function VoiceRecorder({ setResult, setError }) {
 
   return (
     <div className="w-full max-w-2xl mx-auto space-y-6">
-
-      {/* Recorder card */}
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-8 text-center space-y-5">
         <div className="flex flex-col items-center gap-2">
           <div className={`w-20 h-20 rounded-full flex items-center justify-center text-3xl border-2 transition-all duration-300
-            ${recording
-              ? "border-red-500 bg-red-500/10 animate-pulse"
-              : "border-white/10 bg-white/5"
-            }`}>
+            ${recording ? "border-red-500 bg-red-500/10 animate-pulse" : "border-white/10 bg-white/5"}`}>
             🎙
           </div>
           {recording && (
@@ -146,28 +140,19 @@ export default function VoiceRecorder({ setResult, setError }) {
 
         <div className="flex justify-center gap-3">
           {!recording ? (
-            <button
-              onClick={startRecording}
-              disabled={analyzing}
-              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition"
-            >
+            <button onClick={startRecording} disabled={analyzing}
+              className="bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition">
               🔴 Start Recording
             </button>
           ) : (
-            <button
-              onClick={stopRecording}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition"
-            >
+            <button onClick={stopRecording}
+              className="bg-gray-700 hover:bg-gray-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition">
               ⏹ Stop Recording
             </button>
           )}
-
           {audioBlob && !recording && !transcribing && (
-            <button
-              onClick={() => runPipeline()}
-              disabled={analyzing}
-              className="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition"
-            >
+            <button onClick={runPipeline} disabled={analyzing}
+              className="bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white px-6 py-2.5 rounded-xl text-sm font-medium transition">
               {analyzing ? "Analysing..." : "⚡ Analyse Deal"}
             </button>
           )}
@@ -178,7 +163,6 @@ export default function VoiceRecorder({ setResult, setError }) {
         )}
       </div>
 
-      {/* Transcript */}
       {(transcribing || transcript) && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-2">
           <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold">Live Transcript</p>
@@ -193,7 +177,6 @@ export default function VoiceRecorder({ setResult, setError }) {
         </div>
       )}
 
-      {/* Pipeline stages */}
       {analyzing && (
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 space-y-3">
           <p className="text-xs text-gray-500 uppercase tracking-widest font-semibold mb-4">Pipeline Progress</p>
@@ -208,14 +191,10 @@ export default function VoiceRecorder({ setResult, setError }) {
                   {done ? "✓" : stage.icon}
                 </div>
                 <div className="flex-1">
-                  <p className={`text-sm font-medium ${done ? "text-green-300" : active ? "text-blue-300" : "text-gray-500"}`}>
-                    {stage.label}
-                  </p>
+                  <p className={`text-sm font-medium ${done ? "text-green-300" : active ? "text-blue-300" : "text-gray-500"}`}>{stage.label}</p>
                   <p className="text-xs text-gray-600">{stage.desc}</p>
                 </div>
-                {active && (
-                  <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />
-                )}
+                {active && <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin" />}
               </div>
             );
           })}
