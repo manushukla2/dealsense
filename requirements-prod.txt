@@ -3,6 +3,7 @@ groq>=0.11.0
 pydub>=0.25.1
 soundfile>=0.12.1
 numpy>=1.26
+noisereduce>=3.0.0
 
 # NLP
 --extra-index-url https://download.pytorch.org/whl/cpu
@@ -10,8 +11,8 @@ torch>=2.2
 transformers>=4.40
 accelerate>=0.30
 scikit-learn>=1.4
-
-noisereduce>=3.0.0
+xgboost>=2.0
+pandas>=2.2
 
 # API
 fastapi>=0.110
@@ -20,4 +21,3 @@ python-multipart>=0.0.9
 pydantic>=2.6
 pydantic-settings>=2.2
 python-dotenv>=1.0
-
