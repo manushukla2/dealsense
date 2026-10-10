@@ -16,7 +16,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=["http://localhost:5173", "https://eagle-exceeding-monotone.ngrok-free.app", "https://*.vercel.app"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -131,3 +131,4 @@ async def predict_text(payload: dict = Body(...)):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
