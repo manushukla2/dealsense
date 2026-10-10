@@ -227,6 +227,98 @@ The system must not imply that speaker labels are always correct. Diarization id
 
 ---
 
+## 🚀 Installation & Setup
+
+Follow these steps to clone and run DealSense locally.
+
+### Prerequisites
+
+Make sure you have installed:
+
+- [Python 3.11+](https://www.python.org/downloads/)
+- [Node.js (LTS)](https://nodejs.org/)
+- [Git](https://git-scm.com/downloads)
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/manushukla2/dealsense.git
+cd dealsense
+```
+
+### 2. Setup the Backend
+
+**Windows (PowerShell)**
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+**macOS / Linux**
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 3. Configure Environment Variables
+
+Create a `.env` file in the project root and add the API key required by your configuration.
+
+```env
+GROQ_API_KEY=your_groq_api_key
+```
+
+Get your API key from the [Groq Console](https://console.groq.com/).
+
+**Important:** Never commit your real API keys to GitHub.
+
+### 4. Start the Backend
+
+With the virtual environment activated, run:
+
+```bash
+uvicorn src.api:app --reload --host 127.0.0.1 --port 8000
+```
+
+Backend API: http://127.0.0.1:8000
+
+API Documentation: http://127.0.0.1:8000/docs
+
+### 5. Setup the Frontend
+
+Open a **new terminal** and navigate to the frontend directory.
+
+If `package.json` is in the project root:
+
+```bash
+npm install
+npm run dev
+```
+
+If the frontend is in a separate folder, navigate into that folder before running these commands.
+
+### 6. Run DealSense
+
+Keep both terminals running:
+
+- **Frontend:** http://localhost:5173/
+- **Backend:** http://127.0.0.1:8000
+- **API Docs:** http://127.0.0.1:8000/docs
+
+Open the frontend URL in your browser to use DealSense.
+
+### 🛠️ Troubleshooting
+
+- **Missing Python dependencies:** Activate the virtual environment and run `pip install -r requirements.txt`.
+- **Missing frontend dependencies:** Run `npm install` in the directory containing `package.json`.
+- **API connection errors:** Make sure the backend is running and the frontend uses the correct backend URL.
+- **Missing API key:** Check that your `.env` file contains the required API key.
+- **Backend import errors:** Verify that `src.api:app` matches the actual backend entry point.
+
 ## 7. Product Experience & Visual Direction
 
 ### Design positioning
